@@ -82,6 +82,10 @@ celerybeat-schedule
 # dotenv
 .env
 
+# Microservicios: la llave PRIVADA JWT nunca se commitea
+# (solo servicio_auth/keys/private.pem la posee; el resto usa public.pem)
+**/keys/private.pem
+
 # virtualenv
 .venv
 venv/
@@ -115,3 +119,75 @@ media/
 # !**/migrations/__init__.py
 
 uv.lock
+
+# ─────────────────────────────────────────────
+# Refuerzos proyecto Django + microservicios Docker
+# (todo lo de arriba se conserva; esto tapa huecos reales
+#  detectados con `git check-ignore` y `git status`)
+# ─────────────────────────────────────────────
+
+# Linters / cachés de herramientas (la raíz .ruff_cache/ tiene su
+# propio .gitignore interno, pero se ignora aquí de forma explícita
+# para no depender de eso; vale en cualquier nivel del repo)
+.ruff_cache/
+.pytest_cache/
+.pyre/
+.pytype/
+
+# dotenv por entorno (.env.local, .env.production, .env.test, ...)
+# IMPORTANTE: los .example SIEMPRE se commitean (plantillas sin secretos)
+.env.*
+!.env.example
+!.env.*.example
+
+# Claves y secretos (además del ya existente **/keys/private.pem):
+# cualquier llave privada, certificados con clave, tokens locales
+*.key
+*.p12
+*.pfx
+secrets.json
+.credentials
+id_rsa*
+id_dsa*
+*.gpg
+
+# Django: estáticos recolectados y journals de SQLite
+staticfiles/
+static_root/
+collected_static/
+*.sqlite3-journal
+*.db-journal
+
+# Celery (el repo ya ignoraba el archivo exacto; se cubren sus variantes)
+celerybeat-schedule.*
+celerybeat.pid
+
+# Logs: ignora el contenido pero permite logs/.gitkeep
+# (*.log de arriba ya los cubre; esto lo hace explícito por servicio)
+logs/*.log
+**/logs/*.log
+
+# Volúmenes / datos locales de Docker y Postgres (bind mounts accidentales)
+pgdata/
+postgres-data/
+data/postgres/
+
+# IDEs y editores
+.idea/
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+*.bak
+
+# Sistema operativo (Thumbs.db ya caía por *.db; se hace explícito)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Reportes de tests / CI
+junit.xml
+test-results/

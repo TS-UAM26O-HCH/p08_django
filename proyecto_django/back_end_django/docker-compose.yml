@@ -1,42 +1,184 @@
+# ─────────────────────────────────────────────
+# Microservicios: servicio_auth + servicio_usuarios + servicio_productos
+# Cada servicio tiene su PROPIA base de datos (aislamiento total).
+#
+# Punto único de entrada — gateway nginx (puerto 80, sin cambiar puertos):
+#   http://localhost/api/auth/*      → servicio_auth
+#   http://localhost/api/usuarios/*  → servicio_usuarios
+#   http://localhost/api/productos/* → servicio_productos
+#
+# Swaggers vía gateway:
+#   http://localhost/api/auth/swagger/
+#   http://localhost/api/usuarios/swagger/
+#   http://localhost/api/productos/swagger/
+#
+# Los servicios NO publican puertos: solo el gateway expone 80:80.
+# (Si necesitas depurar un servicio directo, descomenta su bloque ports.)
+#
+# Uso:
+#   docker compose build
+#   docker compose up -d
+#   docker compose exec servicio_auth python manage.py migrate
+#   docker compose exec servicio_usuarios python manage.py migrate
+#   docker compose exec servicio_productos python manage.py migrate
+#   docker compose exec servicio_auth python manage.py initadmin
+#
+# El monolito original sigue disponible con:
+#   docker compose -f docker-compose.monolito.yml up -d
+# ─────────────────────────────────────────────
 services:
-  db:
+  postgres_auth:
     image: postgres:15-alpine
-    container_name: api-rest-postgres
+    container_name: ms-postgres-auth
     restart: always
     environment:
-      POSTGRES_DB: ${DATABASE_NAME}
-      POSTGRES_USER: ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "${DATABASE_PORT}:5432"
+      - "5433:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-auth-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: api-rest-django
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
+  postgres_usuarios:
+    image: postgres:15-alpine
+    container_name: ms-postgres-usuarios
+    restart: always
     environment:
-      DATABASE_ENGINE: ${DATABASE_ENGINE}
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USER: ${DATABASE_USER}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_HOST: db
+      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-usuarios-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d usuarios_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres_productos:
+    image: postgres:15-alpine
+    container_name: ms-postgres-productos
+    restart: always
+    environment:
+      POSTGRES_DB: productos_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-productos-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d productos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  servicio_auth:
+    build:
+      context: ./servicio_auth
+      dockerfile: Dockerfile
+    container_name: ms-servicio-auth
+    depends_on:
+      postgres_auth:
+        condition: service_healthy
+    # Sin puertos publicados: solo accesible vía gateway http://localhost.
+    # Depuración directa (opcional): descomentar para http://localhost:8001
+    # ports:
+    #   - "8001:8000"
+    expose:
+      - "8000"
+    volumes:
+      - ./servicio_auth:/app
+    env_file:
+      - ./servicio_auth/.env
+    environment:
+      FORCE_SCRIPT_NAME: /api/auth
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: auth_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_HOST: postgres_auth
       DATABASE_PORT: "5432"
     restart: always
 
+  servicio_usuarios:
+    build:
+      context: ./servicio_usuarios
+      dockerfile: Dockerfile
+    container_name: ms-servicio-usuarios
+    depends_on:
+      postgres_usuarios:
+        condition: service_healthy
+    # Sin puertos publicados: solo accesible vía gateway http://localhost.
+    # Depuración directa (opcional): descomentar para http://localhost:8002
+    # ports:
+    #   - "8002:8000"
+    expose:
+      - "8000"
+    volumes:
+      - ./servicio_usuarios:/app
+    env_file:
+      - ./servicio_usuarios/.env
+    environment:
+      FORCE_SCRIPT_NAME: /api/usuarios
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: usuarios_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_HOST: postgres_usuarios
+      DATABASE_PORT: "5432"
+    restart: always
+
+  servicio_productos:
+    build:
+      context: ./servicio_productos
+      dockerfile: Dockerfile
+    container_name: ms-servicio-productos
+    depends_on:
+      postgres_productos:
+        condition: service_healthy
+    # Sin puertos publicados: solo accesible vía gateway http://localhost.
+    # Depuración directa (opcional): descomentar para http://localhost:8003
+    # ports:
+    #   - "8003:8000"
+    expose:
+      - "8000"
+    volumes:
+      - ./servicio_productos:/app
+    env_file:
+      - ./servicio_productos/.env
+    environment:
+      FORCE_SCRIPT_NAME: /api/productos
+      DATABASE_ENGINE: django.db.backends.postgresql
+      DATABASE_NAME: productos_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_HOST: postgres_productos
+      DATABASE_PORT: "5432"
+    restart: always
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: ms-gateway
+    depends_on:
+      - servicio_auth
+      - servicio_usuarios
+      - servicio_productos
+    ports:
+      - "80:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: always
+
 volumes:
-  postgres-data:
+  postgres-auth-data:
+  postgres-usuarios-data:
+  postgres-productos-data:

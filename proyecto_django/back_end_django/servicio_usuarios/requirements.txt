@@ -1,0 +1,9 @@
+Django
+djangorestframework
+django-filter
+django-cors-headers
+drf-yasg
+python-decouple
+psycopg2-binary
+djangorestframework-simplejwt
+cryptography
