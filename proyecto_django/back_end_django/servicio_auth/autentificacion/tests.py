@@ -226,9 +226,7 @@ class TestLogin(TestCase):
             format="json",
         )
 
-        payload = jwt.decode(
-            login.data["access"], options={"verify_signature": False}
-        )
+        payload = jwt.decode(login.data["access"], options={"verify_signature": False})
         self.assertEqual(payload["username"], "testadmin")
         self.assertTrue(payload["is_staff"])
         self.assertTrue(payload["is_superuser"])

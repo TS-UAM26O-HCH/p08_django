@@ -44,7 +44,7 @@ class UsuarioDAO:
                 if isinstance(usuario_id, uuid.UUID)
                 else uuid.UUID(str(usuario_id))
             )
-        except (ValueError, AttributeError, TypeError):
+        except ValueError, AttributeError, TypeError:
             raise DatosInvalidos_400("El ID del usuario no es un UUID válido.")
         try:
             usuario = Usuario.objects.filter(id=usuario_uuid, is_deleted=False).first()

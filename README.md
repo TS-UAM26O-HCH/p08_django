@@ -1,5 +1,9 @@
 # Practica 4 para TSCC — Microservicios Django + JWT
 
+## Debido a ciertas complicaciones con el documento proporcionado, el uso de IA fue gran parte para hacer los fix
+
+## Tambien fue util para generar el README junto al diagrama mermaid
+
 ## Arquitectura
 
 El monolito original (`proyecto_django/back_end_django/` con las apps
@@ -7,12 +11,12 @@ El monolito original (`proyecto_django/back_end_django/` con las apps
 3 microservicios Django independientes, cada uno con su propia base de
 datos PostgreSQL:
 
-| Servicio           | Carpeta                                              | Puerto host | BD (puerto host)    | Responsabilidad                                                     |
-| ------------------ | ---------------------------------------------------- | ----------- | ------------------- | ------------------------------------------------------------------- |
+| Servicio           | Carpeta                                              | Puerto host | BD (puerto host)    | Responsabilidad                                                              |
+| ------------------ | ---------------------------------------------------- | ----------- | ------------------- | ---------------------------------------------------------------------------- |
 | gateway (nginx)    | `proyecto_django/back_end_django/gateway/nginx.conf` | 80          | —                   | Punto único de entrada: `/api/auth/*`, `/api/usuarios/*`, `/api/productos/*` |
-| servicio_auth      | `proyecto_django/back_end_django/servicio_auth`      | — (interno) | auth_db (5433)      | Emite JWT (RS256), refresh, logout, logs                            |
-| servicio_usuarios  | `.../servicio_usuarios`                              | — (interno) | usuarios_db (5434)  | CRUD de usuarios                                                    |
-| servicio_productos | `.../servicio_productos`                             | — (interno) | productos_db (5435) | CRUD de productos                                                   |
+| servicio_auth      | `proyecto_django/back_end_django/servicio_auth`      | — (interno) | auth_db (5433)      | Emite JWT (RS256), refresh, logout, logs                                     |
+| servicio_usuarios  | `.../servicio_usuarios`                              | — (interno) | usuarios_db (5434)  | CRUD de usuarios                                                             |
+| servicio_productos | `.../servicio_productos`                             | — (interno) | productos_db (5435) | CRUD de productos                                                            |
 
 > Los servicios Django NO publican puertos: solo el gateway expone el
 > puerto 80, así nunca hay que cambiar de puerto para usar las APIs.
@@ -310,15 +314,15 @@ envía el token automáticamente.
 
 #### 6.6 Códigos de respuesta esperados
 
-| Código | Cuándo lo verás |
-| ------ | --------------- |
-| 200 | GET, PATCH, refresh, logout, DELETE |
-| 201 | POST de usuario/producto creado |
-| 400 | Campos inválidos; refresh reusado o expirado (`Token inválido o ya expirado`) |
-| 401 | Sin header `Authorization`, token expirado o falso |
-| 403 | Usuario sin `is_staff` en `/api/logs/*` |
-| 404 | Ruta o `id` inexistente |
-| 500 | `POST /api/users/` sin `password` (pendiente de validar como 400) |
+| Código | Cuándo lo verás                                                               |
+| ------ | ----------------------------------------------------------------------------- |
+| 200    | GET, PATCH, refresh, logout, DELETE                                           |
+| 201    | POST de usuario/producto creado                                               |
+| 400    | Campos inválidos; refresh reusado o expirado (`Token inválido o ya expirado`) |
+| 401    | Sin header `Authorization`, token expirado o falso                            |
+| 403    | Usuario sin `is_staff` en `/api/logs/*`                                       |
+| 404    | Ruta o `id` inexistente                                                       |
+| 500    | `POST /api/users/` sin `password` (pendiente de validar como 400)             |
 
 Sin token (o con uno falso) los servicios responden `401`; un usuario
 sin `is_staff` recibe `403` en `/api/logs/*`.
@@ -368,13 +372,13 @@ chmod -R u+rwX proyecto_django/back_end_django/servicio_*/logs
 
 ## Problemas frecuentes
 
-| Síntoma                                               | Causa probable                                                        | Solución                                                                    |
-| ----------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `env file ... not found` al hacer `up`                | Falta el paso 2 (`.env`)                                              | Crea los 3 `.env` desde sus `.env.example`                                  |
-| `401` en usuarios/productos con token recién obtenido | Llave pública desactualizada o token expirado (30 min)                | Repite el `cp` de `public.pem`, pide un token nuevo                         |
-| `Could not deserialize key data`                      | `keys/*.pem` vacíos o corruptos                                       | Regenera el par con el paso 2                                               |
-| `connection refused` en `migrate`                     | Postgres aún iniciando                                                | Espera y reintenta                                                          |
-| Puertos ocupados                                      | Otro proceso usa 80/5433-5435                                         | Libera los puertos o edita el compose                                       |
-| `502 Bad Gateway` en el puerto 80                   | Algún servicio Django aún está iniciando                              | Espera y reintenta; revisa `docker compose ps`                              |
-| `500` al crear usuario (`missing password`)         | Falta el campo `password` en el POST                                  | Incluye siempre `password` (ver 6.2)                                        |
-| Swagger "try it out" falla vía gateway                | `FORCE_SCRIPT_NAME` no coincide con el prefijo del gateway            | Verifica `FORCE_SCRIPT_NAME=/api/<servicio>` en compose/`.env` y `reverse()` |
+| Síntoma                                               | Causa probable                                             | Solución                                                                     |
+| ----------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `env file ... not found` al hacer `up`                | Falta el paso 2 (`.env`)                                   | Crea los 3 `.env` desde sus `.env.example`                                   |
+| `401` en usuarios/productos con token recién obtenido | Llave pública desactualizada o token expirado (30 min)     | Repite el `cp` de `public.pem`, pide un token nuevo                          |
+| `Could not deserialize key data`                      | `keys/*.pem` vacíos o corruptos                            | Regenera el par con el paso 2                                                |
+| `connection refused` en `migrate`                     | Postgres aún iniciando                                     | Espera y reintenta                                                           |
+| Puertos ocupados                                      | Otro proceso usa 80/5433-5435                              | Libera los puertos o edita el compose                                        |
+| `502 Bad Gateway` en el puerto 80                     | Algún servicio Django aún está iniciando                   | Espera y reintenta; revisa `docker compose ps`                               |
+| `500` al crear usuario (`missing password`)           | Falta el campo `password` en el POST                       | Incluye siempre `password` (ver 6.2)                                         |
+| Swagger "try it out" falla vía gateway                | `FORCE_SCRIPT_NAME` no coincide con el prefijo del gateway | Verifica `FORCE_SCRIPT_NAME=/api/<servicio>` en compose/`.env` y `reverse()` |

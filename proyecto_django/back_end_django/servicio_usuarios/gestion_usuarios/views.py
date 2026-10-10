@@ -499,7 +499,9 @@ class UsuarioViewSet(viewsets.ViewSet):
                 return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
 
             except DatosInvalidos_400 as e:
-                logger.warning(f"ID inválido al cambiar contraseña usuario id={pk}: {e}")
+                logger.warning(
+                    f"ID inválido al cambiar contraseña usuario id={pk}: {e}"
+                )
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
             except ValueError as e:
