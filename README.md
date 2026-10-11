@@ -166,7 +166,7 @@ Credenciales: usuario `Admin`, contraseña `AdminApiDjango123`.
 
 ### 6. Uso y prueba de la API
 
-**Vía única: el gateway** (`http://127.0.0.1`, puerto 80, sin cambiar puertos).
+**Vía única: el gateway** (`http://127.0.0.1`
 Todas las peticiones —curl, Swagger o frontend— usan esta base URL:
 
 | URL del gateway    | Destino            |
@@ -174,18 +174,6 @@ Todas las peticiones —curl, Swagger o frontend— usan esta base URL:
 | `/api/auth/*`      | servicio_auth      |
 | `/api/usuarios/*`  | servicio_usuarios  |
 | `/api/productos/*` | servicio_productos |
-
-El prefijo se elimina al reenviar: `/api/usuarios/api/users/` llega como
-`/api/users/` al servicio. Cada Django genera sus URLs con el prefijo
-(`FORCE_SCRIPT_NAME`), por eso el Swagger funciona detrás del gateway,
-incluido el "Try it out". Cada servicio conserva además sus logs
-propios: `/api/auth/api/logs/...`, `/api/usuarios/api/logs/...`,
-`/api/productos/api/logs/...`.
-
-(Las rutas antiguas `/auth/*`, `/usuarios/*`, `/productos/*` redirigen
-301 a su equivalente `/api/...` por compatibilidad.)
-
-#### 6.1 Autenticación (servicio_auth)
 
 **a) Login — obtener el token:**
 
@@ -201,6 +189,7 @@ curl -s -X POST http://127.0.0.1/api/auth/api/auth/token/ \
 
 ```bash
 export TOKEN="<pega-aqui-el-access-token>"
+export REFRESH="<pega-aqui-el-refresh-token>"
 curl -s http://127.0.0.1/api/usuarios/api/users/ \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -218,7 +207,6 @@ curl -s -X POST http://127.0.0.1/api/auth/api/auth/token/refresh/ \
 **d) Logout (requiere Bearer + refresh vigente):**
 
 ```bash
-export REFRESH="<pega-aqui-el-refresh-token>"
 curl -s -X POST http://127.0.0.1/api/auth/api/auth/logout/ \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -226,79 +214,7 @@ curl -s -X POST http://127.0.0.1/api/auth/api/auth/logout/ \
 # {"mensaje": "Sesión cerrada correctamente."}
 ```
 
-#### 6.2 Usuarios (servicio_usuarios, requiere Bearer)
-
-```bash
-# Listar usuarios
-curl -s http://127.0.0.1/api/usuarios/api/users/ \
-  -H "Authorization: Bearer $TOKEN"
-
-# Ver un usuario (reemplaza <id>)
-curl -s http://127.0.0.1/api/usuarios/api/users/<id>/ \
-  -H "Authorization: Bearer $TOKEN"
-
-# Crear un usuario (password es OBLIGATORIO; sin él responde 500)
-curl -s -X POST http://127.0.0.1/api/usuarios/api/users/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"username": "juan", "email": "juan@test.com", "password": "JuanPass123",
-       "first_name": "Juan", "last_name": "Perez", "date_of_birth": "1990-01-01"}'
-# 201 + el usuario creado (sin el password)
-
-# Actualizar parcial
-curl -s -X PATCH http://127.0.0.1/api/usuarios/api/users/<id>/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"first_name": "Juan Carlos"}'
-
-# Eliminar
-curl -s -X DELETE http://127.0.0.1/api/usuarios/api/users/<id>/ \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-#### 6.3 Productos (servicio_productos, requiere Bearer)
-
-```bash
-# Listar productos
-curl -s http://127.0.0.1/api/productos/api/products/ \
-  -H "Authorization: Bearer $TOKEN"
-
-# Ver un producto (reemplaza <id>)
-curl -s http://127.0.0.1/api/productos/api/products/<id>/ \
-  -H "Authorization: Bearer $TOKEN"
-
-# Crear un producto
-curl -s -X POST http://127.0.0.1/api/productos/api/products/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"type": "BIEN", "name": "Laptop", "price": "1500.00", "status": true,
-       "description": "Laptop de prueba", "product_key": "LAP00001",
-       "image_link": "http://example.com/img.png"}'
-# 201 + el producto creado
-
-# Actualizar parcial
-curl -s -X PATCH http://127.0.0.1/api/productos/api/products/<id>/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"price": "1400.00"}'
-
-# Eliminar
-curl -s -X DELETE http://127.0.0.1/api/productos/api/products/<id>/ \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-#### 6.4 Logs de auditoría (solo admin / `is_staff`)
-
-```bash
-curl -s "http://127.0.0.1/api/auth/api/logs/auditoria/?limite=5" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-También disponibles `.../api/logs/tecnico/` y los equivalentes de
-usuarios (`/api/usuarios/api/logs/...`) y productos
-(`/api/productos/api/logs/...`).
-
-#### 6.5 Probar desde Swagger
+#### 6.1 Probar desde Swagger
 
 Documentación (vía gateway, punto único de entrada):
 
@@ -312,17 +228,18 @@ Pulsa `Authorize` e ingresa `Bearer <access-token>` (con un espacio
 entre `Bearer` y el token); luego el "Try it out" de cada endpoint ya
 envía el token automáticamente.
 
-#### 6.6 Códigos de respuesta esperados
+#### 6.2 Códigos de respuesta esperados
 
-| Código | Cuándo lo verás                                                               |
-| ------ | ----------------------------------------------------------------------------- |
-| 200    | GET, PATCH, refresh, logout, DELETE                                           |
-| 201    | POST de usuario/producto creado                                               |
-| 400    | Campos inválidos; refresh reusado o expirado (`Token inválido o ya expirado`) |
-| 401    | Sin header `Authorization`, token expirado o falso                            |
-| 403    | Usuario sin `is_staff` en `/api/logs/*`                                       |
-| 404    | Ruta o `id` inexistente                                                       |
-| 500    | `POST /api/users/` sin `password` (pendiente de validar como 400)             |
+| Código | Cuándo lo verás                                                                                                                                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 200    | GET, PUT, PATCH, refresh, logout, DELETE (lógico), `activate/deactivate/restore/verify_email/change_password/search/update_image`                   |
+| 201    | POST de usuario/producto creado                                                                                                                     |
+| 400    | Campos inválidos; `q` faltante en `search`; `image_link` inválido; refresh reusado o expirado (`Token inválido o ya expirado`); email ya verificado |
+| 401    | Sin header `Authorization`, token expirado o falso                                                                                                  |
+| 403    | Usuario sin `is_staff` en `/api/logs/*`                                                                                                             |
+| 404    | Ruta o `id` inexistente                                                                                                                             |
+| 409    | Conflicto: `username`/`email`/`product_key` duplicado                                                                                               |
+| 500    | `POST /api/users/` sin `password` (pendiente de validar como 400)                                                                                   |
 
 Sin token (o con uno falso) los servicios responden `401`; un usuario
 sin `is_staff` recibe `403` en `/api/logs/*`.
@@ -369,16 +286,3 @@ Si los logs dan error de permisos en local:
 sudo chown -R $USER:$USER proyecto_django/back_end_django/servicio_*/logs
 chmod -R u+rwX proyecto_django/back_end_django/servicio_*/logs
 ```
-
-## Problemas frecuentes
-
-| Síntoma                                               | Causa probable                                             | Solución                                                                     |
-| ----------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `env file ... not found` al hacer `up`                | Falta el paso 2 (`.env`)                                   | Crea los 3 `.env` desde sus `.env.example`                                   |
-| `401` en usuarios/productos con token recién obtenido | Llave pública desactualizada o token expirado (30 min)     | Repite el `cp` de `public.pem`, pide un token nuevo                          |
-| `Could not deserialize key data`                      | `keys/*.pem` vacíos o corruptos                            | Regenera el par con el paso 2                                                |
-| `connection refused` en `migrate`                     | Postgres aún iniciando                                     | Espera y reintenta                                                           |
-| Puertos ocupados                                      | Otro proceso usa 80/5433-5435                              | Libera los puertos o edita el compose                                        |
-| `502 Bad Gateway` en el puerto 80                     | Algún servicio Django aún está iniciando                   | Espera y reintenta; revisa `docker compose ps`                               |
-| `500` al crear usuario (`missing password`)           | Falta el campo `password` en el POST                       | Incluye siempre `password` (ver 6.2)                                         |
-| Swagger "try it out" falla vía gateway                | `FORCE_SCRIPT_NAME` no coincide con el prefijo del gateway | Verifica `FORCE_SCRIPT_NAME=/api/<servicio>` en compose/`.env` y `reverse()` |
