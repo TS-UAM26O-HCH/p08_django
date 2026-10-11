@@ -271,3 +271,9 @@ Si los logs dan error de permisos en local:
 sudo chown -R $USER:$USER proyecto_django/back_end_django/servicio_*/logs
 chmod -R u+rwX proyecto_django/back_end_django/servicio_*/logs
 ```
+
+## Endpoints swagger
+
+http://localhost/api/auth/swagger/
+http://localhost/api/usuarios/swagger/
+http://localhost/api/productos/swagger/
