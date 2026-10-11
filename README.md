@@ -244,30 +244,15 @@ envía el token automáticamente.
 Sin token (o con uno falso) los servicios responden `401`; un usuario
 sin `is_staff` recibe `403` en `/api/logs/*`.
 
-### 7. Correr los tests (opcional, sin Docker)
+### 7. Correr los tests (deben estar activos los servicios)
 
 ```bash
-cd practica4
-uv sync   # instala dependencias, incluye cryptography para RS256
+cd proyecto_django/back_end_django
 
-DATABASE_ENGINE=django.db.backends.sqlite3 DATABASE_NAME=/tmp/test_auth.db \
-  uv run --project . python proyecto_django/back_end_django/servicio_auth/manage.py test
+docker compose exec -e DATABASE_ENGINE=django.db.backends.sqlite3 -e DATABASE_NAME=/tmp/t_auth.db servicio_auth python manage.py test autentificacion -v 2
+docker compose exec -e DATABASE_ENGINE=django.db.backends.sqlite3 -e DATABASE_NAME=/tmp/t_usu.db servicio_usuarios python manage.py test gestion_usuarios -v 2
+docker compose exec -e DATABASE_ENGINE=django.db.backends.sqlite3 -e DATABASE_NAME=/tmp/t_prod.db servicio_productos python manage.py test gestion_productos -v 2
 ```
-
-O por servicio, desde su carpeta (requiere el `.venv` activado o `uv run`):
-
-```bash
-cd proyecto_django/back_end_django/servicio_auth
-DATABASE_ENGINE=django.db.backends.sqlite3 DATABASE_NAME=/tmp/t1.db python manage.py test
-cd ../servicio_usuarios
-DATABASE_ENGINE=django.db.backends.sqlite3 DATABASE_NAME=/tmp/t2.db python manage.py test
-cd ../servicio_productos
-DATABASE_ENGINE=django.db.backends.sqlite3 DATABASE_NAME=/tmp/t3.db python manage.py test
-```
-
-> Los tests de usuarios/productos simulan el JWT con `force_authenticate`
-> (el login real vive en servicio_auth); los de auth validan además los
-> claims `is_staff`/`is_superuser` y el algoritmo RS256.
 
 ### 8. Comandos útiles
 
